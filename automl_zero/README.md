@@ -1,5 +1,31 @@
 # RIST-maml
 
+As of Black Friday, 13 November 2020 (20hCET), **ternary** classification is provided by running 3MD.sh .. The accuracy is north of 83% on projected dimension 256 (5 epochs, 80 unseen tasks). The obtained algorithm is by removing one line of NEURAL_NET_ALGORITHM, namely s2 = s2 + s4 in Learn(), so that s2 (accumulation of errors times learning rate) is constant zero {thus last line of Predict(), i.e., s1 = s1 + s2, can also be removed}. Besides labels 0 and 1, a third 0.5 label is introduced in executor.h and the prediction is read by splitting the range of Sigmoid(x) {i.e., [0,1]} in three conjoint/disjoint intervals [0,1/3) [1/3,2/3] (2/3,1]. Here is the obtained algorithm
+
+Algorithm of FIT=0.850532 on DIM=256 is
+def Setup():
+  v2 = gaussian(0, 0.1, n_features)
+  m0 = gaussian(0, 0.1, (n_features, n_features))
+  s3 = 0.01
+def Predict():
+  v3 = dot(m0, v0)
+  v3 = v3 + v1
+  v4 = maximum(v3, v5)
+  s1 = dot(v4, v2)
+  //s1 = s1 + s2 *** although present, this line becomes redundant and can be eliminated by manual static analysis
+def Learn():
+  s4 = s0 - s1
+  s4 = s3 * s4
+  *** s2 = s2 + s4 *** this line erased by our automated Regularized Evolution
+  v6 = s4 * v4
+  v2 = v2 + v6
+  v7 = s4 * v2
+  v8 = heaviside(v3, 1.0)
+  v7 = v8 * v7
+  v1 = v1 + v7
+  m1 = outer(v7, v0)
+  m0 = m0 + m1
+
 ## many-CPU AutoML-Zero with improved regularized_evolution 
 
 Our variant of Multitask AutoML-Zero brings a complex procedure for renewal of DSL algorithms population as an alternative to regularized_evolution.{h,cc} of Google Research AutoML-Zero designed to run on more CPUs by means of OpenMP/gcc-10+. We also provide updated task.proto and task_util.h to generate ProjectedMultiClassificationTask for attempts at 10-class multiclassification (which requires an alternative executor.h). The list of updated sources includes evaluator.{h,cc} to allow for multi-dimensional evaluation (on projected dimensions 16, 32, 64, 128 and even 256). Dimension 256 allows for increased maximal fitness but runs much slower (even w.r.t. dimension 128) and requires setting EIGEN_STACK_ALLOCATION_LIMIT 0 in

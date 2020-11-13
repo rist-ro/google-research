@@ -1,3 +1,5 @@
+// Copyright 2020 Romanian Institute of Science and Technology
+// https://rist.ro for differential changes w.r.t. the original
 // Copyright 2020 The Google Research Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,6 +50,15 @@ using ::std::vector;  // NOLINT
 using ::std::pair;  // NOLINT
 using ::std::set;  // NOLINT
 
+void TSort(TRIPLE& t) {
+  int n = std::tuple_size<TRIPLE>::value;
+  IntegerT a[n]; std::tie(a[0], a[1], a[2]) = t;
+    for (int i = 0; i < n - 1; i++) {
+      IntegerT min = a[i]; int idx = i;
+      for (int j = i+1; j < n; j++) if (a[j] < min) {
+	  idx = j; min = a[idx]; } if (i < idx) std::swap(a[i],a[idx]); }
+}  
+  
 // The values of the seeds below were chosen so that they span tasks of
 // varying difficulties (the difficulties are for the nonlinear tasks).
 vector<RandomSeedT> DefaultFirstParamSeeds() {
@@ -87,39 +98,51 @@ void FillTasksFromTaskSpec(
 
   RandomSeedT param_seed;
   RandomSeedT data_seed;
+  IntegerT nte = task_spec.num_train_epochs();
+  //#pragma omp parallel for  
   for (IntegerT i = 0; i < num_tasks; ++i) {
     param_seed =
         i < first_param_seeds.size() ? first_param_seeds[i] : param_seed + 1;
     data_seed =
         i < first_data_seeds.size() ? first_data_seeds[i] : data_seed + 1;
-
     const IntegerT task_index = return_tasks->size();
     switch (task_spec.features_size()) {
       case 2:
-        return_tasks->push_back(CreateTask<2>(task_index, param_seed,
-                                                    data_seed, task_spec));
+        return_tasks->push_back(CreateTask<2>(task_index, nte, param_seed, data_seed, task_spec));
         break;
-      case 4:
-        return_tasks->push_back(CreateTask<4>(task_index, param_seed,
-                                                    data_seed, task_spec));
+      case 10:
+        return_tasks->push_back(CreateTask<10>(task_index, nte, param_seed, data_seed, task_spec));
+        break;
+    case 256: //if (i < num_tasks) 
+	  return_tasks->push_back(CreateTask<256>(task_index, nte+2, param_seed, data_seed, task_spec));
+        // break;
+    case 128: //if (i < 2*num_tasks)
+	  return_tasks->push_back(CreateTask<128>(task_index, nte+2, param_seed, data_seed, task_spec));
+        // break;	
+    case 64: //if (i < 3*num_tasks)
+	  return_tasks->push_back(CreateTask<64>(task_index, nte+2, param_seed, data_seed, task_spec));
+        // break;
+    case 32: //if (i < 4*num_tasks)
+        return_tasks->push_back(CreateTask<32>(task_index, nte+2, param_seed, data_seed, task_spec));
+        // break;
+    case 16: 
+        return_tasks->push_back(CreateTask<16>(task_index, nte+2, param_seed, data_seed, task_spec));
         break;
       case 8:
-        return_tasks->push_back(CreateTask<8>(task_index, param_seed,
-                                                    data_seed, task_spec));
+        return_tasks->push_back(CreateTask<8>(task_index, nte, param_seed, data_seed, task_spec));
+        break;	
+      case 4:
+        return_tasks->push_back(CreateTask<4>(task_index, nte, param_seed, data_seed, task_spec));
         break;
-      case 16:
-        return_tasks->push_back(CreateTask<16>(task_index, param_seed,
-                                                     data_seed, task_spec));
-        break;
-      case 32:
-        return_tasks->push_back(CreateTask<32>(task_index, param_seed,
-                                                     data_seed, task_spec));
-        break;
-      default:
+	/* case 784:
+        return_tasks->push_back(CreateTask<784>(task_index, param_seed, data_seed, task_spec));
+        break; */
+    default:
         LOG(FATAL) << "Unsupported features size: "
                    << task_spec.features_size() << std::endl;
     }
   }
+  std::cerr.flush();
 }
 
 void FillTasks(
