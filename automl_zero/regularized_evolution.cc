@@ -64,14 +64,15 @@ RegularizedEvolution::RegularizedEvolution(
     Generator* generator, Evaluator* evaluator, Mutator* mutator)
   : STAMP_(std::string(std::getenv("HOME"))+"/LOG/dt/td"+std::to_string(std::time(nullptr))),
     rf_(STAMP_+'R'), af_(STAMP_+'A'), of_(STAMP_+'L'),
-    best_fit_(0.5), cull_fit_(0.0), fs_(16), sc_(0), epc_(-2),
-    cf_(PS-NP), evaluator_(evaluator), rand_gen_(rand_gen),
+    best_fit_(0.1), cull_fit_(0.0), sc_(0), epc_(-2), fs_(16),
+    evaluator_(evaluator), rand_gen_(rand_gen),
     start_secs_(GetCurrentTimeNanos() / kNanosPerSecond),
     epoch_secs_(start_secs_), epoch_secs_last_progress_(epoch_secs_),
     num_individuals_last_progress_(std::numeric_limits<IntegerT>::min()),
     tournament_size_(tournament_size), progress_every_(progress_every),
     initialized_(false), generator_(generator), mutator_(mutator),
-    population_size_(PS), init_pop_(PS), min_pop_(PS), max_pop_(PS), 
+    cf_(population_size/8), NP(population_size), //population_size_(population_size+cf_),
+    //init_pop_(population_size_), min_pop_(population_size_), max_pop_(population_size_), 
     algorithms_(PMAX, make_shared<Algorithm>()), // max_pop_+1 should suffice 
     next_algorithms_(PMAX, make_shared<Algorithm>()),      
     fitnesses_(PMAX), next_fitnesses_(PMAX), num_individuals_(0) {}
@@ -79,25 +80,30 @@ RegularizedEvolution::RegularizedEvolution(
 IntegerT RegularizedEvolution::Run(const IntegerT max_train_steps,
      const IntegerT max_nanos, double min_fitness){
   CHECK(initialized_) << "RegularizedEvolution not initialized.\n";
-  CHECK_LE(population_size_, PMAX) << "RegularizedEvolution PMAX " << PMAX;
+  CHECK_LE(population_size_, PMAX) << "RegularizedEvolution PS<=PMAX ";
+  CHECK_GE(cf_,1) << "RegularizedEvolution cf_>=1 ";
+  CHECK_EQ(population_size_, NP+cf_) << "RegularizedEvolution PS==NP+cf_ ";
+  CHECK_EQ(HNP,NP/2) << "RegularizedEvolution HNP==NP/2 ";
   std::time_t seed = std::time(nullptr); omp_set_nested(1);
   rf_<<std::to_string(seed)<<' '; rf_.flush(); rf_.close(); std::srand(seed); 
   MaybePrintProgress(true); evaluator_->ResetThreshold(1.8);
   std::string RA = algorithms_[0]->ToReadable();  
-  of_<<"\nAlgorithm of FIT="<<best_fit_<<" on DIM="<<fs_<<" is\n"<<RA<<'\n';of_.flush();
-  std::cout<<"\nAlgorithm of FIT="<<best_fit_<<" on DIM="<<fs_<<" is\n"<<RA<<'\n';std::cout.flush();  
+  of_<<"\nAlgorithm of FIT="<<best_fit_<<" on DIM|POP|CF|HNP="<<fs_<<'|'
+     <<population_size_<<'|'<<cf_<<'|'<<HNP<<" is\n"<<RA<<'\n'; of_.flush();
+  std::cout<<"\nAlgorithm of FIT="<<best_fit_<<" on DIM|POP|CF|HNP="<<fs_<<'|'
+     <<population_size_<<'|'<<cf_<<'|'<<HNP<<" is\n"<<RA<<'\n'; std::cout.flush();  
   const IntegerT start_train_steps = evaluator_->GetNumTrainStepsCompleted();
-  RunHybrid(max_train_steps, max_nanos, 0.36); DimUp(2.2);
-  RunHybrid(max_train_steps, max_nanos, 0.42); DimUp(2.6);  
-  RunHybrid(max_train_steps, max_nanos, 0.50); DimUp(3.0); 
-  RunHybrid(max_train_steps, max_nanos, 0.60); DimUp(2.4); 
-  RunHybrid(max_train_steps, max_nanos, 0.70); af_.close(); of_.close(); 
+  RunHybrid(max_train_steps, max_nanos, 0.75); DimUp(2.0);
+  RunHybrid(max_train_steps, max_nanos, 0.80); DimUp(2.2);  
+  RunHybrid(max_train_steps, max_nanos, 0.85); DimUp(1.8); 
+  RunHybrid(max_train_steps, max_nanos, 0.90); DimUp(1.6); 
+  RunHybrid(max_train_steps, max_nanos, 0.95); af_.close(); of_.close(); 
   return evaluator_->GetNumTrainStepsCompleted() - start_train_steps;  
 }
   
 inline void RegularizedEvolution::resPOP(int new_pop) { population_size_ = new_pop; }
 
-inline IntegerT RegularizedEvolution::CP(int c) { return (c+1)*BS; }
+inline IntegerT RegularizedEvolution::CP(int c) { return (c+1)*2*cf_; }
 
 inline void RegularizedEvolution::resEPC() {epc_ = -1;}
 inline bool RegularizedEvolution::resCF() {
@@ -161,7 +167,7 @@ inline bool RegularizedEvolution::Cull(double prev_fit, int c,
   if (RunSp(min_fitness, prev_fit)) return true; MaybePrintProgress(false);
   /*if (c%2) { if (RunHp(min_fitness, pcA, pcB, pcC, prev_fit)) return true; }
     else { if (RunMp(min_fitness, pcA, pcB, pcC, prev_fit)) return true; }*/
-  if (CF(PS, false, pcA, pcB, pcC, min_fitness) >= FIT * prev_fit) { 
+  if (CF(population_size_, false, pcA, pcB, pcC, min_fitness) >= FIT * prev_fit) { 
     of_ << "[CF],"; resEPC(); of_.flush(); return true; } //CP(c)
   of_<<"/,"; of_.flush(); return false; 
 }
@@ -324,18 +330,17 @@ void RegularizedEvolution::Pull(IntegerT K, bool cut) {
 }
   
 double RegularizedEvolution::LastTry(int c) { char p = '*'; 
-  int B[5] = {population_size_-1, population_size_-BS, population_size_-2*BS,
-    population_size_-3*BS, population_size_-NP};
-  for (int k = 0; k < 5; k++) B[k] = std::max(0,B[k]);
+  int B[3] = {population_size_-1, population_size_-HNP, population_size_-NP};
+  for (int k = 0; k < 3; k++) B[k] = std::max(0,B[k]);
   for (int j = 0; j < cf_; j++)  SecondFirst(j,(c+1)*cf_+j);
-  for (int j = B[0]; j >= B[2]; j--) NextSelect(j);
+  for (int j = B[0]; j >= B[1]; j--) NextSelect(j);
 #pragma omp parallel for schedule(dynamic, 1)
-  for (int j = B[0]; j >= B[2]; j--) NextExecute(j);
-  UpdateIS(2); of_<<p; 
-  for (int j = B[2]-1; j >= B[NPBS] ; j--) NextSelect(j);
+  for (int j = B[0]; j >= B[1]; j--) NextExecute(j);
+  UpdateIS(HNP); of_<<p; 
+  for (int j = B[1]-1; j >= B[2]; j--) NextSelect(j);
 #pragma omp parallel for schedule(dynamic, 1)
-  for (int j = B[2]-1; j >= B[NPBS] ; j--) NextExecute(j);
-  UpdateIS(2); of_<<p; return Fetch(true);
+  for (int j = B[1]-1; j >= B[2]; j--) NextExecute(j);
+  UpdateIS(HNP); of_<<p; return Fetch(true);
 }
 
 double RegularizedEvolution::CF(IntegerT K, bool cut,
@@ -364,17 +369,16 @@ inline double RegularizedEvolution::Fetch(bool forced) {
 
 double RegularizedEvolution::Fetch(const bool forced, const IntegerT fs) {
   char p = '-'; if (forced) { Fetch(); p = '.'; }
-  int B[5] = {population_size_-1, population_size_-BS, population_size_-2*BS,
-    population_size_-3*BS, population_size_-NP};
-  for (int k = 0; k < 5; k++) B[k] = std::max(0,B[k]);
-  for (int j = B[0]; j >= B[2]; j--) NextSelect(j);
+  int B[3] = {population_size_-1, population_size_-HNP, population_size_-NP};
+  for (int k = 0; k < 3; k++) B[k] = std::max(0,B[k]);
+  for (int j = B[0]; j >= B[1]; j--) NextSelect(j);
 #pragma omp parallel for schedule(dynamic, 1)
-  for (int j = B[0]; j >= B[2]; j--) NextExecute(j, fs);
-  UpdateIS(2); of_<<p; 
-  for (int j = B[2]-1; j >= B[NPBS] ; j--) NextSelect(j);
+  for (int j = B[0]; j >= B[1]; j--) NextExecute(j, fs);
+  UpdateIS(HNP); of_<<p; 
+  for (int j = B[1]-1; j >= B[2]; j--) NextSelect(j);
 #pragma omp parallel for schedule(dynamic, 1)
-  for (int j = B[2]-1; j >= B[NPBS] ; j--) NextExecute(j, fs);
-  UpdateIS(2); of_ << ','; of_.flush(); return Fetch();
+  for (int j = B[1]-1; j >= B[2]; j--) NextExecute(j, fs);
+  UpdateIS(HNP); of_ << ','; of_.flush(); return Fetch();
 }
 
 inline double RegularizedEvolution::NextFetch() { 
@@ -388,18 +392,17 @@ inline double RegularizedEvolution::NextFetch(const bool forced) {
   
 double RegularizedEvolution::NextFetch(const bool forced, const IntegerT fs) {
   char p = '_'; if (forced) { Fetch(); p = '^'; }
-  int B[5] = {population_size_-1, population_size_-BS, population_size_-2*BS,
-    population_size_-3*BS, population_size_-NP};
-  for (int k = 0; k < 5; k++) B[k] = std::max(0,B[k]);
-  for (int j = 0; j < cf_; j++) SecondFirst(j, BS/2+j);
-  for (int j = B[0]; j >= B[2]; j--) NextSelect(j);
+  int B[3] = {population_size_-1, population_size_-HNP, population_size_-NP};
+  for (int k = 0; k < 3; k++) B[k] = std::max(0,B[k]);
+  for (int j = 0; j < cf_; j++) SecondFirst(j, cf_+j);
+  for (int j = B[0]; j >= B[1]; j--) NextSelect(j);
 #pragma omp parallel for schedule(dynamic, 1)
-  for (int j = B[0]; j >= B[2]; j--) NextExecute(j, fs);
-  UpdateIS(2); of_<<p; 
-  for (int j = B[2]-1; j >= B[NPBS] ; j--) NextSelect(j);
+  for (int j = B[0]; j >= B[1]; j--) NextExecute(j, fs);
+  UpdateIS(HNP); of_<<p; 
+  for (int j = B[1]-1; j >= B[2]; j--) NextSelect(j);
 #pragma omp parallel for schedule(dynamic, 1)
-  for (int j = B[2]-1; j >= B[NPBS] ; j--) NextExecute(j, fs);
-  UpdateIS(2); of_<<p; return Fetch(true);
+  for (int j = B[1]-1; j >= B[2]; j--) NextExecute(j, fs);
+  UpdateIS(HNP); of_<<p; return Fetch(true);
 }
   
 double RegularizedEvolution::RunV0w(double min_fitness) {
@@ -407,15 +410,15 @@ double RegularizedEvolution::RunV0w(double min_fitness) {
   const char p = '0'; of_<<'V'; 
   for (int j = NP; j < population_size_; j++) SecondFirst(j, cf_+j-NP);
   for (int i = NP; i < population_size_; i++) FirstFirst(i, i-NP);
-  for (int j = BS; j < NP; j++) SecondFirst(j, j-BS);
+  for (int j = 2*cf_; j < NP; j++) SecondFirst(j, j-2*cf_);
   for (int j = 0; j < NP; j++) NextMutate(j);
 #pragma omp parallel for schedule(dynamic, 1)
   for (int j = 0; j < NP; j++) NextExecute(j);
-  UpdateIS(NPBS); of_<<p; 
+  UpdateIS(NP); of_<<p; 
   for (int i = 0; i < NP; i++) FirstMutate(i);
 #pragma omp parallel for schedule(dynamic, 1)
   for (int i = 0; i < NP; i++) FirstExecute(i);
-  UpdateIS(NPBS); of_ << ","; of_.flush(); return Fetch();
+  UpdateIS(NP); of_ << ","; of_.flush(); return Fetch();
 }
 
 double RegularizedEvolution::RunV1w(double min_fitness) {
@@ -423,15 +426,15 @@ double RegularizedEvolution::RunV1w(double min_fitness) {
   const char p = '1'; of_<<'V'; 
   for (int j = NP; j < population_size_; j++) SecondFirst(j, cf_+j-NP);
   for (int i = NP; i < population_size_; i++) FirstFirst(i, i-NP);
-  for (int j = 2*BS; j < NP; j++) SecondFirst(j, j-2*BS);
+  for (int j = 2*2*cf_; j < NP; j++) SecondFirst(j, j-2*2*cf_);
   for (int j = 0; j < NP; j++) NextMutate(j);
 #pragma omp parallel for schedule(dynamic, 1)
   for (int j = 0; j < NP; j++) NextExecute(j);
-  UpdateIS(NPBS); of_<<p; 
+  UpdateIS(NP); of_<<p; 
   for (int i = 0; i < NP; i++) FirstMutate(i);
 #pragma omp parallel for schedule(dynamic, 1)
   for (int i = 0; i < NP; i++) FirstExecute(i);
-  UpdateIS(NPBS); of_ << ","; of_.flush(); return Fetch();
+  UpdateIS(NP); of_ << ","; of_.flush(); return Fetch();
 }
   
 double RegularizedEvolution::RunV2w(double min_fitness) {
@@ -439,15 +442,15 @@ double RegularizedEvolution::RunV2w(double min_fitness) {
   const char p = '2'; of_<<'V'; 
   for (int j = NP; j < population_size_; j++) SecondFirst(j, cf_+j-NP);
   for (int i = NP; i < population_size_; i++) FirstFirst(i, i-NP);
-  for (int j = 3*BS; j < NP; j++) SecondFirst(j, j-3*BS);
+  for (int j = 3*2*cf_; j < NP; j++) SecondFirst(j, j-3*2*cf_);
   for (int j = 0; j < NP; j++) NextMutate(j);
 #pragma omp parallel for schedule(dynamic, 1)
   for (int j = 0; j < NP; j++) NextExecute(j);
-  UpdateIS(NPBS); of_<<p; 
+  UpdateIS(NP); of_<<p; 
   for (int i = 0; i < NP; i++) FirstMutate(i);
 #pragma omp parallel for schedule(dynamic, 1)
   for (int i = 0; i < NP; i++) FirstExecute(i);
-  UpdateIS(NPBS); of_ << ","; of_.flush(); return Fetch();  
+  UpdateIS(NP); of_ << ","; of_.flush(); return Fetch();  
 }
 
 inline void RegularizedEvolution::Mutate(shared_ptr<const Algorithm>* algorithm) {
@@ -498,7 +501,7 @@ RegularizedEvolution::BestFitnessTournament() {
   /* shared_ptr<const Algorithm>
 RegularizedEvolution::BestFitnessTournament(int ps) {
   double tour_best_fitness = -std::numeric_limits<double>::infinity();
-  IntegerT best_index = -1; const int cf = std::max(1,ps/NPBS);
+  IntegerT best_index = -1; const int cf = ps-NP;
   const IntegerT ts = ps/cf; //std::max(10,cf+cf/2);
   for (IntegerT tour_idx = 0; tour_idx < ts; ++tour_idx) {
     const IntegerT algorithm_index = rand_gen_->UniformPopulationSize(ps);
@@ -695,7 +698,7 @@ RegularizedEvolution::ReEvaluate(bool cut, IntegerT K, bool& change) {
   double prev_fit = best_fit_; if (population_size_ < K) {
     std::cerr<<"ReEv"<<K<<'!'; Push(prev_fit, K); }
   const IntegerT new_fs = 2 * fs_; if (new_fs > 256) return algorithms_[0];
-  if (K<BS) K=BS; const IntegerT KK = K; if (!change) K=BS; 
+  if (K<2*cf_) K=2*cf_; const IntegerT KK = K; if (!change) K=2*cf_; 
   std::vector<double> newfits(K); of_<<"Rev"<<new_fs<<"^"<<K;
 #pragma omp parallel for schedule(dynamic, 1)
   for (int i = 0; i < K; i++) newfits[i] = Execute(algorithms_[i], new_fs);

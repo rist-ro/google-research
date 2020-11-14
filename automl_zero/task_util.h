@@ -293,7 +293,7 @@ struct ProjectedTernaryClassificationTaskCreator {
       for (const ClassTriple& class_tuple : task_spec.held_out_triples()) {
 	TRIPLE t = std::make_tuple(class_tuple.fst_class(), class_tuple.snd_class(),
 	  class_tuple.thr_class()); TSort(t); held_out_tuples_set.insert(t); }
-
+      //if (F==256) std::cerr<<" HO="<<held_out_tuples_set.size(); 
       std::vector<TRIPLE> search_tuples;
       // Assumming the classes are in [0, 10).
       for (IntegerT i = 0; i < 10; i++) {
@@ -304,9 +304,8 @@ struct ProjectedTernaryClassificationTaskCreator {
 	    if (held_out_tuples_set.count(class_tuple) == 0)
 	      search_tuples.push_back(class_tuple);
 	  } } }
-
-      CHECK(!search_tuples.empty())
-          << "All the tuples are held out!" << std::endl;
+      //if (F==256) std::cerr<<" ST="<<search_tuples.size(); 
+      CHECK(!search_tuples.empty()) << "All the tuples are held out!" << std::endl;
 
       TRIPLE selected_tuple =
           search_tuples[task_gen.UniformInteger(0, (search_tuples.size()))];
@@ -325,7 +324,7 @@ struct ProjectedTernaryClassificationTaskCreator {
     std::string filename = absl::StrCat("ternary_", task_spec.dataset_name(),
 		  "-fst_", fst_class,"-snd_",snd_class,"-thr_",thr_class,"-dim_",F,"-seed_",data_seed);
 
-    std::string P = " "+filename+" "; std::cerr<<P;
+    if (F==256) { std::string P = absl::StrCat(" (",data_seed,"-",fst_class,"_",snd_class,"_",thr_class,") "); std::cerr<<P; }
 
     std::string full_path = path + "/" + filename;
     ScalarLabelDataset saved_dataset;

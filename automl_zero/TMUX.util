@@ -1,0 +1,11 @@
+For those looking for a simple answer, just use prefix + :, then type in
+capture-pane -S -3000 + return
+(Replace 3000 with however many lines you'd like to save.)
+This copies those lines into a buffer.
+
+Then, to save the buffer to a file, just use prefix + : again,
+and type in save-buffer filename.txt + return,
+replacing filename with whatever you'd like.
+
+(By default prefix is ctrl + b.)
+

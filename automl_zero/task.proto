@@ -225,7 +225,7 @@ message ProjectedTernaryClassificationTask {
   // (2) when the dataset is randomized, i.e., when `fst_class`, `snd_class`,  
   // and `thr_class` are not set, the `data_seed` is also used to randomly select the classes.
   // TODO(crazydonkey): make sure the random seed is never 0.
-  optional int32 min_supported_data_seed = 14 [default = 1];
+  optional int32 min_supported_data_seed = 14 [default = 0];
   optional int32 max_supported_data_seed = 15 [default = 9];
 }
 

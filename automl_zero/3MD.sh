@@ -34,12 +34,13 @@ bazel run --verbose_failures -c opt \
         projected_ternary_classification_task { \
           dataset_name: 'mnist' \
           path: '${DATA_DIR}' \
+          max_supported_data_seed: 33 \
         } \
         features_size: 256 \
         num_train_examples: 13500 \
         num_valid_examples: 2700 \
         num_train_epochs: 1 \
-        num_tasks: 16 \
+        num_tasks: 20 \
         eval_type: ACCURACY \
       } \
     } \
@@ -57,27 +58,28 @@ bazel run --verbose_failures -c opt \
     mutate_learn_size_max: 20 \
     train_budget {train_budget_baseline: NEURAL_NET_ALGORITHM} \
     fitness_combination_mode: MEAN_FITNESS_COMBINATION \
-    population_size: 9 \
-    tournament_size: 2 \
+    population_size: 8 \
+    tournament_size: 4 \
     initial_population: NEURAL_NET_ALGORITHM \
     max_train_steps: 100000000000 \
     allowed_mutation_types {
       mutation_types: [0, 4, 5] \
     } \
     mutate_prob: 1.0 \
-    progress_every: 96 \
+    progress_every: 24 \
     " \
   --final_tasks="
     tasks { \
       projected_ternary_classification_task { \
         dataset_name: 'mnist' \
         path: '${DATA_DIR}' \
+        max_supported_data_seed: 33 \
       } \
       features_size: 256 \
       num_train_examples: 13500 \
       num_valid_examples: 2700 \
       num_train_epochs: 5 \
-      num_tasks: 80 \
+      num_tasks: 240 \
       eval_type: ACCURACY \
     } \
     " \
@@ -87,14 +89,15 @@ bazel run --verbose_failures -c opt \
       projected_ternary_classification_task { \
         dataset_name: 'mnist' \
         path: '${DATA_DIR}' \
+        max_supported_data_seed: 33 \
       } \
       features_size: 256 \
       num_train_examples: 13500 \
       num_valid_examples: 2700 \
-      num_train_epochs: 3 \
-      num_tasks: 40 \
+      num_train_epochs: 7 \
+      num_tasks: 120 \
       eval_type: ACCURACY \
     } \
     "\
-    --sufficient_fitness=0.7
+    --sufficient_fitness=0.95
 

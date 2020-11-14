@@ -37,15 +37,9 @@
 namespace automl_zero {
 
   constexpr double FIT = 1.0004;
-  constexpr IntegerT PMAX = 10;
-  constexpr int PS = 9;
-  constexpr int NP = 8; // number of available CPUs
-  constexpr int BS = 2; // Batch Size CPUs
-  constexpr int NPBS = 4; // Number of batches, NP/BS
-  // it is recommended that population_size_ is NP+NP/8
-  
+  constexpr IntegerT PMAX = 100;
+
   using PSA = std::pair<std::string, std::shared_ptr<const Algorithm>>;
-  
   
 class RegularizedEvolution {
  public:
@@ -94,9 +88,8 @@ class RegularizedEvolution {
   friend IntegerT EvaluatesAndPutsInPosition(const Algorithm&, RegularizedEvolution*);
   friend bool PopulationsEq(const RegularizedEvolution&, const RegularizedEvolution&);
 
-  std::string STAMP_; std::ofstream rf_, af_, of_; 
-  IntegerT fs_, init_pop_, min_pop_, max_pop_; 
-  double best_fit_, cull_fit_; int sc_, epc_, cf_; bool LT(int c, double prev_fit);
+  std::string STAMP_; std::ofstream rf_, af_, of_; IntegerT fs_;
+  double best_fit_, cull_fit_; int sc_, epc_; bool LT(int c, double prev_fit);
   bool Cull(double prev_fit, int c,int& pcA,int& pcB,int& pcC, double min_fitness);
   double CF(IntegerT K, bool cut,int& pcA,int& pcB,int& pcC, double min_fitness);   
   double Kick(double prev_fit, double min_fitness, IntegerT max_nanos,
@@ -130,7 +123,7 @@ class RegularizedEvolution {
   
   void InitAlgorithm(std::shared_ptr<const Algorithm>* algorithm) {
     *algorithm = std::make_shared<Algorithm>(generator_->TheInitModel()); } ;
-  void UpdateIS(int k) { num_individuals_+=k*BS; epoch_secs_=absl::GetCurrentTimeNanos()/kNanosPerSecond; };
+  void UpdateIS(int k) { num_individuals_+=k; epoch_secs_=absl::GetCurrentTimeNanos()/kNanosPerSecond; };
   void FirstExecute(int i){ FirstExecute(i,fs_); }; void NextExecute(int j){ NextExecute(j,fs_); }; 
   void FirstExecute(int i, IntegerT fs) { fitnesses_[i] = Execute(algorithms_[i], fs); };
   void NextExecute(int j, IntegerT fs) { next_fitnesses_[j] = Execute(next_algorithms_[j], fs); }; 
@@ -169,7 +162,15 @@ class RegularizedEvolution {
   // Serializable components.
   std::map<std::string, std::shared_ptr<const Algorithm>> dict_;
   std::pair<std::map<std::string, std::shared_ptr<const Algorithm>>::iterator,bool> ret_;
-  IntegerT population_size_;
+
+  int cf_ = 1; // number of preserved best algorithms
+  int NP = 2; // number of available CPUs, e.g., 8
+  int HNP = NP/2; // half the number of available CPUs
+  // it is recommended that population_size_ is NP+cf_
+  IntegerT population_size_ = NP+cf_;
+  IntegerT init_pop_ = population_size_;
+  IntegerT min_pop_ = population_size_;
+  IntegerT max_pop_ = population_size_;  
   std::vector<std::shared_ptr<const Algorithm>> algorithms_;
   std::vector<std::shared_ptr<const Algorithm>> next_algorithms_;    
   std::vector<double> fitnesses_;

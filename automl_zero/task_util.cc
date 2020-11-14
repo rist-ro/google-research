@@ -78,12 +78,10 @@ vector<RandomSeedT> DefaultFirstDataSeeds() {
   return {11001, 11012, 11010, 11000, 11006, 11008, 11007, 11003};
 }
 
-void FillTasksFromTaskSpec(
-    const TaskSpec& task_spec,
+void FillTasksFromTaskSpec(const TaskSpec& task_spec,
     vector<unique_ptr<TaskInterface>>* return_tasks) {
-  const IntegerT num_tasks = task_spec.num_tasks();
-  CHECK_GT(num_tasks, 0);
-  vector<RandomSeedT> first_param_seeds =
+  const IntegerT num_tasks = task_spec.num_tasks(); CHECK_GT(num_tasks, 1);
+  /*  vector<RandomSeedT> first_param_seeds =
       task_spec.param_seeds_size() == 0
           ? DefaultFirstParamSeeds()
           : vector<RandomSeedT>(task_spec.param_seeds().begin(),
@@ -94,18 +92,18 @@ void FillTasksFromTaskSpec(
           : vector<RandomSeedT>(task_spec.data_seeds().begin(),
                                 task_spec.data_seeds().end());
   CHECK(!first_param_seeds.empty());
-  CHECK(!first_data_seeds.empty());
-
-  RandomSeedT param_seed;
-  RandomSeedT data_seed;
-  IntegerT nte = task_spec.num_train_epochs();
-  //#pragma omp parallel for  
-  for (IntegerT i = 0; i < num_tasks; ++i) {
-    param_seed =
+  CHECK(!first_data_seeds.empty()); */
+  std::srand(std::time(nullptr)); RandomSeedT param_seed = 0;
+  std::set<RandomSeedT> data_seeds;
+  do data_seeds.insert(std::rand()); while (data_seeds.size() < num_tasks);
+  CHECK_EQ(num_tasks, data_seeds.size());
+  IntegerT nte = task_spec.num_train_epochs(); //#pragma omp parallel for  
+  for (RandomSeedT data_seed: data_seeds) {
+    /*param_seed =
         i < first_param_seeds.size() ? first_param_seeds[i] : param_seed + 1;
     data_seed =
-        i < first_data_seeds.size() ? first_data_seeds[i] : data_seed + 1;
-    const IntegerT task_index = return_tasks->size();
+    i < first_data_seeds.size() ? first_data_seeds[i] : data_seed + 1; */
+    const IntegerT task_index = return_tasks->size(); //RandomSeedT data_seed = data_seeds[i];
     switch (task_spec.features_size()) {
       case 2:
         return_tasks->push_back(CreateTask<2>(task_index, nte, param_seed, data_seed, task_spec));

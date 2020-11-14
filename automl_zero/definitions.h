@@ -21,6 +21,10 @@
 
 #ifndef AUTOML_ZERO_DEFINITIONS_H_
 #define AUTOML_ZERO_DEFINITIONS_H_
+#ifndef EIGEN_STACK_ALLOCATION_LIMIT
+// 131072 == 128 KB allows for maximal projection dimension 128
+#define EIGEN_STACK_ALLOCATION_LIMIT 0
+#endif
 
 #include <sched.h>
 
