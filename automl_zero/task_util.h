@@ -317,16 +317,13 @@ struct ProjectedTernaryClassificationTaskCreator {
       LOG(FATAL) << ("You should either provide all or none of three classes.")
 		 << std::endl;
     }
-
     // Generate the key using the task_spec.
     /*std::string filename = absl::StrCat("ternary_", task_spec.dataset_name(), "-dim_", F,
       "-seed_",data_seed,"-fst_", fst_class,"-snd_",snd_class,"-thr_",thr_class);*/
     std::string filename = absl::StrCat("ternary_", task_spec.dataset_name(),
 		  "-fst_", fst_class,"-snd_",snd_class,"-thr_",thr_class,"-dim_",F,"-seed_",data_seed);
-
-    if (F==256) { std::string P = absl::StrCat(" (",data_seed,"-",fst_class,"_",snd_class,"_",thr_class,") "); std::cerr<<P; }
-
-    std::string full_path = path + "/" + filename;
+    std::string P = absl::StrCat(" (",F,"-",data_seed,":",fst_class,"_",snd_class,"_",thr_class,") ");
+    std::cerr<<P; std::string full_path = path + "/" + filename;
     ScalarLabelDataset saved_dataset;
     std::ifstream is(full_path, std::ifstream::binary);
     CHECK(is.good()) << "No data found at " << full_path

@@ -39,8 +39,8 @@ bazel run --verbose_failures -c opt \
         features_size: 256 \
         num_train_examples: 13500 \
         num_valid_examples: 2700 \
-        num_train_epochs: 1 \
-        num_tasks: 20 \
+        num_train_epochs: 3 \
+        num_tasks: 7 \
         eval_type: ACCURACY \
       } \
     } \
@@ -99,5 +99,5 @@ bazel run --verbose_failures -c opt \
       eval_type: ACCURACY \
     } \
     "\
-    --sufficient_fitness=0.95
+    --sufficient_fitness=0.92
 

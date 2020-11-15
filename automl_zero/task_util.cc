@@ -80,67 +80,20 @@ vector<RandomSeedT> DefaultFirstDataSeeds() {
 
 void FillTasksFromTaskSpec(const TaskSpec& task_spec,
     vector<unique_ptr<TaskInterface>>* return_tasks) {
-  const IntegerT num_tasks = task_spec.num_tasks(); CHECK_GT(num_tasks, 1);
-  /*  vector<RandomSeedT> first_param_seeds =
-      task_spec.param_seeds_size() == 0
-          ? DefaultFirstParamSeeds()
-          : vector<RandomSeedT>(task_spec.param_seeds().begin(),
-                                task_spec.param_seeds().end());
-  vector<RandomSeedT> first_data_seeds =
-      task_spec.data_seeds_size() == 0
-          ? DefaultFirstDataSeeds()
-          : vector<RandomSeedT>(task_spec.data_seeds().begin(),
-                                task_spec.data_seeds().end());
-  CHECK(!first_param_seeds.empty());
-  CHECK(!first_data_seeds.empty()); */
-  std::srand(std::time(nullptr)); RandomSeedT param_seed = 0;
-  std::set<RandomSeedT> data_seeds;
-  do data_seeds.insert(std::rand()); while (data_seeds.size() < num_tasks);
-  CHECK_EQ(num_tasks, data_seeds.size());
-  IntegerT nte = task_spec.num_train_epochs(); //#pragma omp parallel for  
+  const IntegerT nt = task_spec.num_tasks(); CHECK_GT(nt, 1); 
+  std::srand(std::time(nullptr)); std::set<RandomSeedT> data_seeds;
+  do data_seeds.insert(std::rand()); while (data_seeds.size() < 14*nt);
+  CHECK_EQ(14*nt, data_seeds.size()); RandomSeedT param_seed = 0; int c = 0;
+  const IntegerT ne = task_spec.num_train_epochs(); CHECK_GT(ne, 1);
   for (RandomSeedT data_seed: data_seeds) {
-    /*param_seed =
-        i < first_param_seeds.size() ? first_param_seeds[i] : param_seed + 1;
-    data_seed =
-    i < first_data_seeds.size() ? first_data_seeds[i] : data_seed + 1; */
-    const IntegerT task_index = return_tasks->size(); //RandomSeedT data_seed = data_seeds[i];
-    switch (task_spec.features_size()) {
-      case 2:
-        return_tasks->push_back(CreateTask<2>(task_index, nte, param_seed, data_seed, task_spec));
-        break;
-      case 10:
-        return_tasks->push_back(CreateTask<10>(task_index, nte, param_seed, data_seed, task_spec));
-        break;
-    case 256: //if (i < num_tasks) 
-	  return_tasks->push_back(CreateTask<256>(task_index, nte+2, param_seed, data_seed, task_spec));
-        // break;
-    case 128: //if (i < 2*num_tasks)
-	  return_tasks->push_back(CreateTask<128>(task_index, nte+2, param_seed, data_seed, task_spec));
-        // break;	
-    case 64: //if (i < 3*num_tasks)
-	  return_tasks->push_back(CreateTask<64>(task_index, nte+2, param_seed, data_seed, task_spec));
-        // break;
-    case 32: //if (i < 4*num_tasks)
-        return_tasks->push_back(CreateTask<32>(task_index, nte+2, param_seed, data_seed, task_spec));
-        // break;
-    case 16: 
-        return_tasks->push_back(CreateTask<16>(task_index, nte+2, param_seed, data_seed, task_spec));
-        break;
-      case 8:
-        return_tasks->push_back(CreateTask<8>(task_index, nte, param_seed, data_seed, task_spec));
-        break;	
-      case 4:
-        return_tasks->push_back(CreateTask<4>(task_index, nte, param_seed, data_seed, task_spec));
-        break;
-	/* case 784:
-        return_tasks->push_back(CreateTask<784>(task_index, param_seed, data_seed, task_spec));
-        break; */
-    default:
-        LOG(FATAL) << "Unsupported features size: "
-                   << task_spec.features_size() << std::endl;
-    }
-  }
-  std::cerr.flush();
+    const IntegerT task_index = return_tasks->size();
+    if (c < 2*nt) return_tasks->push_back(CreateTask<256>(task_index, ne, param_seed, data_seed, task_spec));
+    else if (c < 5*nt) return_tasks->push_back(CreateTask<128>(task_index, ne+1, param_seed, data_seed, task_spec));
+    else if (c < 9*nt)  return_tasks->push_back(CreateTask<64>(task_index, ne+2, param_seed, data_seed, task_spec));
+    else if (c < 12*nt) return_tasks->push_back(CreateTask<32>(task_index, ne+1, param_seed, data_seed, task_spec));
+    else if (c < 14*nt) return_tasks->push_back(CreateTask<16>(task_index, ne, param_seed, data_seed, task_spec));
+    else LOG(FATAL) << "FillTasksFromTaskSpec: control should not reach here!" << std::endl; ++c;
+  } std::cerr.flush();
 }
 
 void FillTasks(

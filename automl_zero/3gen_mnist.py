@@ -68,13 +68,10 @@ flags.DEFINE_list('class_ids', '0,1,2,3,4,5,6,7,8,9',
                   ' classification datasets.')
 FLAGS = flags.FLAGS
 
-def create_projected_ternary_dataset(dataset_name, fst_class, snd_class, thr_class,
+def create_projected_ternary_dataset(dataset_name, fst, snd, thr,
     num_train_examples, num_valid_examples, num_test_examples, projected_dim, seed, load_fn):
   """Create a projected ternary dataset from the given spec and seed."""
   num_samples = ( num_train_examples + num_valid_examples + num_test_examples)
-  fst = fst_class
-  snd = snd_class
-  thr = thr_class
   # Only support training data from MNIST and CIFAR10 for experiments.
   data, labels = get_dataset(
     dataset_name, int(num_samples/3), [fst, snd, thr], load_fn=load_fn)
@@ -270,10 +267,7 @@ def main(unused_argv):
       for i in range(num_classes):
         for j in range(i+1, num_classes):
           for k in range(j+1, num_classes):
-            fst_class = 
-            snd_class = class_ids[j]
-            thr_class = class_ids[k]
-            print('Generating fst {} snd {} thr {} dim{} seed{}'.format(i, j, k, dim, seed))
+            print('Generating dim{} seed{} fst {} snd {} thr {}'.format(dim, seed, i, j, k))
             dataset = create_projected_ternary_dataset(
               FLAGS.dataset_name, class_ids[i], class_ids[j], class_ids[k],
               FLAGS.num_train_examples, FLAGS.num_valid_examples,

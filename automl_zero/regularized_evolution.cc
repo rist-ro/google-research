@@ -71,9 +71,8 @@ RegularizedEvolution::RegularizedEvolution(
     num_individuals_last_progress_(std::numeric_limits<IntegerT>::min()),
     tournament_size_(tournament_size), progress_every_(progress_every),
     initialized_(false), generator_(generator), mutator_(mutator),
-    cf_(population_size/8), NP(population_size), //population_size_(population_size+cf_),
-    //init_pop_(population_size_), min_pop_(population_size_), max_pop_(population_size_), 
-    algorithms_(PMAX, make_shared<Algorithm>()), // max_pop_+1 should suffice 
+    cf_(population_size/8), NP(population_size), 
+    algorithms_(PMAX, make_shared<Algorithm>()), 
     next_algorithms_(PMAX, make_shared<Algorithm>()),      
     fitnesses_(PMAX), next_fitnesses_(PMAX), num_individuals_(0) {}
 
@@ -93,11 +92,11 @@ IntegerT RegularizedEvolution::Run(const IntegerT max_train_steps,
   std::cout<<"\nAlgorithm of FIT="<<best_fit_<<" on DIM|POP|CF|HNP="<<fs_<<'|'
      <<population_size_<<'|'<<cf_<<'|'<<HNP<<" is\n"<<RA<<'\n'; std::cout.flush();  
   const IntegerT start_train_steps = evaluator_->GetNumTrainStepsCompleted();
-  RunHybrid(max_train_steps, max_nanos, 0.75); DimUp(2.0);
+  RunHybrid(max_train_steps, max_nanos, 0.76); DimUp(2.0);
   RunHybrid(max_train_steps, max_nanos, 0.80); DimUp(2.2);  
-  RunHybrid(max_train_steps, max_nanos, 0.85); DimUp(1.8); 
-  RunHybrid(max_train_steps, max_nanos, 0.90); DimUp(1.6); 
-  RunHybrid(max_train_steps, max_nanos, 0.95); af_.close(); of_.close(); 
+  RunHybrid(max_train_steps, max_nanos, 0.84); DimUp(2.4); 
+  RunHybrid(max_train_steps, max_nanos, 0.88); DimUp(2.6); 
+  RunHybrid(max_train_steps, max_nanos, 0.92); af_.close(); of_.close(); 
   return evaluator_->GetNumTrainStepsCompleted() - start_train_steps;  
 }
   
